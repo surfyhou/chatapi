@@ -9,10 +9,12 @@ export class ChatgptService {
     private prismaService: PrismaService,
     private chatgptPoolService: ChatgptPoolService
   ) {
-    (async () => {
-      await this.stopAllChatGPTInstances();
-      await this.startAllDownAccount();
-    })();
+    if (process.env.NODE_ENV !== 'production') {
+      (async () => {
+        await this.stopAllChatGPTInstances();
+        await this.startAllDownAccount();
+      })();
+    }
   }
   async createChatGPTAccount(account: {
     email: string;

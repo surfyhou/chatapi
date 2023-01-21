@@ -9,9 +9,14 @@ import type {
   NestConfig,
   SwaggerConfig,
 } from 'src/configs/config.interface';
-
+import config from './configs/config';
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger:
+      config().environment === 'development'
+        ? ['log', 'debug', 'error', 'verbose', 'warn']
+        : ['log', 'error', 'warn'],
+  });
 
   // Validation
   app.useGlobalPipes(new ValidationPipe());

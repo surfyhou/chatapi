@@ -3,6 +3,7 @@ export interface Config {
   cors: CorsConfig;
   swagger: SwaggerConfig;
   chatgpt: ChatgptConfig;
+  environment: 'development' | 'production' | 'test';
 }
 
 export interface NestConfig {

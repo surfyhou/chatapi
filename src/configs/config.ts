@@ -22,6 +22,7 @@ const config: Config = {
     proxyServer: process.env.PROXY_SERVER || undefined,
     userDataDir: process.env.USER_DATA_DIR || undefined,
   },
+  environment: process.env.NODE_ENV as 'development' | 'production' | 'test',
 };
 
 export default (): Config => config;
