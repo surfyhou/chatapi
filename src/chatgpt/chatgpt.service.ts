@@ -1,99 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'nestjs-prisma';
-import { ChatgptPoolService } from './chatgpt-pool/chatgpt-pool.service';
 import { Cron } from '@nestjs/schedule';
-import { AppConfig } from 'src/configs/config.interface';
+import { AppConfig, ChatgptConfig } from 'src/configs/config.interface';
 import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class ChatgptService {
   logger = new Logger('ChatgptService');
   enableMessageRecord = false;
+  apiKey: string;
   constructor(
     private prismaService: PrismaService,
-    private chatgptPoolService: ChatgptPoolService,
     private configService: ConfigService
   ) {
     const { enableMessageRecord } =
       this.configService.get<AppConfig>('appConfig');
     this.enableMessageRecord = enableMessageRecord;
-    (async () => {
-      await this.stopAllChatGPTInstances();
-      await this.startAllDownAccount();
-    })();
+    const { apiKey } = this.configService.get<ChatgptConfig>('chatgpt');
+    this.apiKey = apiKey;
   }
-  async createChatGPTAccount(account: {
-    email: string;
-    password: string;
-    isGoogleLogin?: boolean;
-    isMicrosoftLogin?: boolean;
-  }) {
-    return this.prismaService.chatGPTAccount.create({
-      data: account,
+  async getChatGPT() {
+    const { ChatGPTAPI } = await import('chatgpt');
+    const chatgpt = new ChatGPTAPI({
+      apiKey: this.apiKey,
     });
-  }
-  async deleteChatGPTAccount(email: string) {
-    this.chatgptPoolService.deleteChatGPTInstanceByEmail(email);
-    return this.prismaService.chatGPTAccount.delete({
-      where: { email },
-    });
-  }
-  async updateChatGPTAccount(
-    email: string,
-    account: {
-      email: string;
-      password: string;
-      isGoogleLogin?: boolean;
-      isMicrosoftLogin?: boolean;
-      // User can only stop the chatgpt account
-      status?: 'Stopped';
-    }
-  ) {
-    this.chatgptPoolService.deleteChatGPTInstanceByEmail(email);
-    const chatgptAccount = await this.prismaService.chatGPTAccount.update({
-      where: { email },
-      data: { ...account, status: 'Down' },
-    });
-    if (account.status === 'Stopped') {
-      return this.prismaService.chatGPTAccount.update({
-        where: { email },
-        data: { status: 'Stopped' },
-      });
-    }
-    // TODO: add queue support
-    this.chatgptPoolService.initChatGPTInstance(account);
-    return chatgptAccount;
-  }
-  async getChatGPTAccount(email: string) {
-    const chatGPTAccount = await this.prismaService.chatGPTAccount.findUnique({
-      where: { email },
-      select: {
-        email: true,
-        isGoogleLogin: true,
-        isMicrosoftLogin: true,
-        status: true,
-      },
-    });
-    return chatGPTAccount;
-  }
-  async getAllChatGPT() {
-    return this.prismaService.chatGPTAccount.findMany({
-      select: {
-        email: true,
-        isGoogleLogin: true,
-        isMicrosoftLogin: true,
-        status: true,
-      },
-    });
-  }
-  async getCurrentActiveChatGPT() {
-    const account = await this.prismaService.chatGPTAccount.findMany({
-      where: { status: 'Running' },
-      select: {
-        email: true,
-      },
-    });
-    const email = account[Math.floor(Math.random() * account.length)].email;
-    return email;
+    return chatgpt;
   }
   // Send Chatgpt Message via ChatgptPoolService
   async sendChatGPTMessage(
@@ -103,26 +33,26 @@ export class ChatgptService {
       tenantId: string;
     }
   ) {
-    let email: string;
+    const email = 'APIKEY';
     const { sessionId, tenantId } = opts;
     const conversation = await this.prismaService.chatGPTConversation.findFirst(
       {
         where: { sessionId, tenantId },
       }
     );
-    if (!conversation) {
-      email = await this.getCurrentActiveChatGPT();
-    } else {
-      email = conversation.email;
-    }
+    const chatgpt = await this.getChatGPT();
     // Send Message
     this.logger.debug(`Send message to ${email}: ${message}`);
     try {
-      const messageResult = await this.chatgptPoolService.sendMessage(message, {
-        email: email,
+      const messageResponse = await chatgpt.sendMessage(message, {
         conversationId: conversation?.conversationId,
         parentMessageId: conversation?.messageId,
       });
+      const messageResult = {
+        conversationId: messageResponse.id,
+        messageId: messageResponse.parentMessageId,
+        response: messageResponse.text,
+      };
       if (!messageResult) {
         this.logger.error(`Send message to ${email} failed`);
         return {
@@ -164,12 +94,16 @@ export class ChatgptService {
     }
   }
   async sendChatGPTMessageOnetime(message: string) {
-    const email = await this.getCurrentActiveChatGPT();
+    const email = 'APIKEY';
     this.logger.debug(`Send message to ${email}: ${message}`);
+    const chatgpt = await this.getChatGPT();
     try {
-      const messageResult = await this.chatgptPoolService.sendMessage(message, {
-        email: email,
-      });
+      const messageResponse = await chatgpt.sendMessage(message);
+      const messageResult = {
+        conversationId: messageResponse.id,
+        messageId: messageResponse.parentMessageId,
+        response: messageResponse.text,
+      };
       if (!messageResult) {
         this.logger.error(`Send message to ${email} failed`);
         return {
@@ -219,65 +153,6 @@ export class ChatgptService {
       this.logger.error(`Record message failed: ${e}`);
     }
   }
-  async startChatgptInstance(email: string) {
-    // As Lock
-    const account = await this.prismaService.chatGPTAccount.findFirst({
-      where: { AND: [{ email }, { status: 'Down' }] },
-    });
-    if (!account) {
-      this.logger.error(`Account ${email} is not down`);
-      return;
-    }
-    this.logger.debug(`Start account ${account.email}`);
-    await this.prismaService.chatGPTAccount.update({
-      where: { email: account.email },
-      data: { status: 'Starting' },
-    });
-    try {
-      await this.chatgptPoolService.initChatGPTInstance(account);
-      await this.prismaService.chatGPTAccount.update({
-        where: { email: account.email },
-        data: { status: 'Running' },
-      });
-    } catch (err) {
-      this.logger.error(`Error starting account ${account.email}: ${err}`);
-      await this.prismaService.chatGPTAccount.update({
-        where: { email: account.email },
-        data: { status: 'Error' },
-      });
-    }
-  }
-  async stopAllChatGPTInstances() {
-    this.logger.debug('Stop all chatgpt instances');
-    const accounts = await this.prismaService.chatGPTAccount.findMany({
-      where: {
-        OR: [
-          { status: 'Running' },
-          {
-            status: 'Starting',
-          },
-          {
-            status: 'Error',
-          },
-          {
-            status: 'Overload',
-          },
-        ],
-      },
-      select: {
-        email: true,
-      },
-    });
-    console.log(`Found ${accounts.length} running accounts`);
-    for (const account of accounts) {
-      this.chatgptPoolService.deleteChatGPTInstanceByEmail(account.email);
-      await this.prismaService.chatGPTAccount.update({
-        where: { email: account.email },
-        data: { status: 'Down' },
-      });
-    }
-    this.logger.debug(`Found ${accounts.length} running accounts`);
-  }
   async resetSession(sessionId: string, tenantId: string) {
     this.logger.debug(`Reset conversation ${sessionId}`);
     const conversation = await this.prismaService.chatGPTConversation.delete({
@@ -292,42 +167,6 @@ export class ChatgptService {
       this.logger.debug(`Conversation ${sessionId} deleted`);
       return conversation;
     }
-  }
-  @Cron('1 * * * * *')
-  async startAllDownAccount() {
-    this.logger.debug('Start all down account');
-    const accounts = await this.prismaService.chatGPTAccount.findMany({
-      where: { status: 'Down' },
-      select: {
-        email: true,
-      },
-      take: 1,
-    });
-    this.logger.debug(`Found ${accounts.length} down accounts`);
-    for (const account of accounts) {
-      await this.startChatgptInstance(account.email);
-    }
-  }
-  // Update account status to Running
-  @Cron('1 * * * * *')
-  async heartbeat() {
-    const emails = Array.from(this.chatgptPoolService.accounts);
-    // update db account status
-    this.logger.debug(`Update account status: ${emails}`);
-    // Update For updatetime
-    await this.prismaService.chatGPTAccount.updateMany({
-      where: { email: { in: emails }, status: 'Running' },
-      data: { updatedAt: new Date(), status: 'Running' },
-    });
-    // Update For overload 1h
-    await this.prismaService.chatGPTAccount.updateMany({
-      where: {
-        email: { in: emails },
-        status: 'Overload',
-        updatedAt: { lt: new Date(new Date().getTime() - 1000 * 60 * 60) },
-      },
-      data: { updatedAt: new Date(), status: 'Running' },
-    });
   }
   async chatGPTExceptionHandle({
     exception,
