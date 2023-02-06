@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@devoxa/prisma-relay-cursor-connection": "2.2.2",
+    "@keyv/postgres": "^1.4.1",
     "@nestjs/apollo": "10.0.19",
     "@nestjs/common": "9.0.5",
     "@nestjs/config": "2.2.0",

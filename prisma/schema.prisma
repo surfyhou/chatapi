@@ -54,4 +54,13 @@ model ChatGPTMessageResult {
   messageId      String   @map("message_id")
   message        String
   response       String
+
+  @@map("chatgpt_message_result")
+}
+
+model ChatGPTConversationCache {
+  key   String @id
+  value String
+
+  @@map("chatgpt_conversation_cache")
 }

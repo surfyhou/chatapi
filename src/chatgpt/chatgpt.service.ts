@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'nestjs-prisma';
-import { Cron } from '@nestjs/schedule';
 import { AppConfig, ChatgptConfig } from 'src/configs/config.interface';
 import { ConfigService } from '@nestjs/config';
+import Keyv from 'keyv';
 @Injectable()
 export class ChatgptService {
   logger = new Logger('ChatgptService');
   enableMessageRecord = false;
   apiKey: string;
+  keyv: Keyv;
   constructor(
     private prismaService: PrismaService,
     private configService: ConfigService
@@ -16,12 +17,18 @@ export class ChatgptService {
       this.configService.get<AppConfig>('appConfig');
     this.enableMessageRecord = enableMessageRecord;
     const { apiKey } = this.configService.get<ChatgptConfig>('chatgpt');
+    const keyv = new Keyv(process.env.DATABASE_URL, {
+      table: 'chatgpt_conversation_cache',
+      adapter: 'postgresql',
+    });
+    this.keyv = keyv;
     this.apiKey = apiKey;
   }
-  async getChatGPT() {
+  async getChatGPT(apiKey?: string) {
     const { ChatGPTAPI } = await import('chatgpt');
     const chatgpt = new ChatGPTAPI({
-      apiKey: this.apiKey,
+      apiKey: apiKey ?? this.apiKey,
+      messageStore: this.keyv,
     });
     return chatgpt;
   }
@@ -49,8 +56,8 @@ export class ChatgptService {
         parentMessageId: conversation?.messageId,
       });
       const messageResult = {
-        conversationId: messageResponse.id,
-        messageId: messageResponse.parentMessageId,
+        conversationId: messageResponse.conversationId,
+        messageId: messageResponse.id,
         response: messageResponse.text,
       };
       if (!messageResult) {
