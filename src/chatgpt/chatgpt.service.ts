@@ -51,7 +51,7 @@ export class ChatgptService {
     const apiKey = await this.getAPIKey();
     const chatgpt = new ChatGPTAPI({
       apiKey: apiKey ?? this.defaultApiKey,
-      ...(persistence ? { keyv: this.keyv } : {}),
+      messageStore: persistence ? this.keyv : undefined,
     });
     return chatgpt;
   }
@@ -72,7 +72,7 @@ export class ChatgptService {
     );
     const chatgpt = await this.getChatGPT(true);
     // Send Message
-    this.logger.debug(`Send message to ${email}: ${message}`);
+    this.logger.debug(`Send session message to ${email}: ${message}`);
     try {
       const messageResponse = await chatgpt.sendMessage(message, {
         conversationId: conversation?.conversationId,
@@ -84,7 +84,7 @@ export class ChatgptService {
         response: messageResponse.text,
       };
       if (!messageResult) {
-        this.logger.error(`Send message to ${email} failed`);
+        this.logger.error(`Send onetime message to ${email} failed`);
         return {
           conversationId: null,
           messageId: null,
@@ -135,7 +135,7 @@ export class ChatgptService {
         response: messageResponse.text,
       };
       if (!messageResult) {
-        this.logger.error(`Send message to ${email} failed`);
+        this.logger.error(`Send onetime message to ${email} failed`);
         return {
           conversationId: null,
           messageId: null,
