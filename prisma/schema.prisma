@@ -23,6 +23,7 @@ model ChatGPTAccount {
   updatedAt        DateTime     @updatedAt
   email            String
   password         String
+  apiKey           String?      @map("api_key")
   isGoogleLogin    Boolean      @default(false)
   isMicrosoftLogin Boolean      @default(false)
   status           ChatGPTState @default(Down)

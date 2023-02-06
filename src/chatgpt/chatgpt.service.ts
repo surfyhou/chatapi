@@ -7,7 +7,7 @@ import Keyv from 'keyv';
 export class ChatgptService {
   logger = new Logger('ChatgptService');
   enableMessageRecord = false;
-  apiKey: string;
+  defaultApiKey?: string;
   keyv: Keyv;
   constructor(
     private prismaService: PrismaService,
@@ -22,13 +22,36 @@ export class ChatgptService {
       adapter: 'postgresql',
     });
     this.keyv = keyv;
-    this.apiKey = apiKey;
+    this.defaultApiKey = apiKey;
   }
-  async getChatGPT(apiKey?: string) {
+  async getAPIKey() {
+    const apiKeys = (
+      await this.prismaService.chatGPTAccount.findMany({
+        where: {
+          status: {
+            notIn: ['Overload'],
+          },
+          apiKey: {
+            not: null,
+          },
+        },
+        select: {
+          apiKey: true,
+        },
+      })
+    ).map((value) => value.apiKey);
+    // random apiKey
+    if (apiKeys.length === 0) {
+      return null;
+    }
+    return apiKeys[Math.floor(Math.random() * apiKeys.length)];
+  }
+  async getChatGPT(persistence = false) {
     const { ChatGPTAPI } = await import('chatgpt');
+    const apiKey = await this.getAPIKey();
     const chatgpt = new ChatGPTAPI({
-      apiKey: apiKey ?? this.apiKey,
-      messageStore: this.keyv,
+      apiKey: apiKey ?? this.defaultApiKey,
+      ...(persistence ? { keyv: this.keyv } : {}),
     });
     return chatgpt;
   }
@@ -47,7 +70,7 @@ export class ChatgptService {
         where: { sessionId, tenantId },
       }
     );
-    const chatgpt = await this.getChatGPT();
+    const chatgpt = await this.getChatGPT(true);
     // Send Message
     this.logger.debug(`Send message to ${email}: ${message}`);
     try {
