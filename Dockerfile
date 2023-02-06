@@ -19,7 +19,6 @@ FROM node:19
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/dist ./dist
-WORKDIR /app
 
 EXPOSE 3000
-CMD [ "node", "node dist/src/main"]
+CMD [ "node", "dist/src/main"]
