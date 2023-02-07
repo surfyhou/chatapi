@@ -3,6 +3,7 @@ import { PrismaService } from 'nestjs-prisma';
 import { AppConfig, ChatgptConfig } from 'src/configs/config.interface';
 import { ConfigService } from '@nestjs/config';
 import Keyv from 'keyv';
+import retry from 'async-retry';
 @Injectable()
 export class ChatgptService {
   logger = new Logger('ChatgptService');
@@ -20,6 +21,7 @@ export class ChatgptService {
     const keyv = new Keyv(process.env.DATABASE_URL, {
       table: 'chatgpt_conversation_cache',
       adapter: 'postgresql',
+      ssl: false,
     });
     this.keyv = keyv;
     this.defaultApiKey = apiKey;
@@ -74,10 +76,13 @@ export class ChatgptService {
     // Send Message
     this.logger.debug(`Send session message to ${email}: ${message}`);
     try {
-      const messageResponse = await chatgpt.sendMessage(message, {
-        conversationId: conversation?.conversationId,
-        parentMessageId: conversation?.messageId,
+      const messageResponse = await retry(async () => {
+        return await chatgpt.sendMessage(message, {
+          conversationId: conversation?.conversationId,
+          parentMessageId: conversation?.messageId,
+        });
       });
+
       const messageResult = {
         conversationId: messageResponse.conversationId,
         messageId: messageResponse.id,
@@ -128,7 +133,9 @@ export class ChatgptService {
     this.logger.debug(`Send message to ${email}: ${message}`);
     const chatgpt = await this.getChatGPT();
     try {
-      const messageResponse = await chatgpt.sendMessage(message);
+      const messageResponse = await retry(async () => {
+        return await chatgpt.sendMessage(message);
+      });
       const messageResult = {
         conversationId: messageResponse.id,
         messageId: messageResponse.parentMessageId,
