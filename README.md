@@ -32,14 +32,11 @@ npm install
     cp env.example .env
     ```
 
-2. Create account.json  
+2. Create apikey.json  
 
     ```sh
     [
-        {    
-            "email": "username",
-            "password": "password"
-        }
+        "<Your API Key>",
     ]
     ```
 
@@ -49,10 +46,10 @@ npm install
     docker-compose -f docker-compose.db.yml up -d
     ```
 
-4. Seed Database
+4. Migrate & Seed Database
 
     ```sh
-    npm run seed
+    npx run migrate:deploy && npm run seed
     ```
 
 5. Start server
@@ -68,10 +65,10 @@ npm install
         curl "http://localhost:3000/chatgpt/account"
     ```
 
-   - Send message
+   - Send One Time message
 
     ```sh
-        curl -X "POST" "http://localhost:3000/chatgpt/sendMessage" \
+        curl -X "POST" "http://localhost:3000/chatgpt/message" \
               -H 'Content-Type: application/json; charset=utf-8' \
               -d $'{
           "message": "Hey!"
@@ -79,16 +76,14 @@ npm install
     
     ```
 
-   - Send Message with user id
-    > You can use userId to send message with conversation  
+    - Send Session message (Auto save context)
 
-    ```
-      curl -X "POST" "http://localhost:3000/chatgpt/sendMessage" \
-            -H 'userId: holegots' \
-            -H 'Content-Type: application/json; charset=utf-8' \
-            -d $'{
-        "message": "Hey!"
-      }'
+    ```sh
+            curl -X "POST" "http://localhost:3000/chatgpt/message/<session_id>" \
+              -H 'Content-Type: application/json; charset=utf-8' \
+              -d $'{
+          "message": "Hey!"
+        }'
     ```
 
 ## Run tests

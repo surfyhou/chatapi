@@ -15,12 +15,7 @@ const config: Config = {
     path: 'api',
   },
   chatgpt: {
-    minimize: true,
-    captchaToken: process.env.CAPTCHA_TOKEN,
-    nopechaKey: process.env.NOPECHA_KEY,
-    executablePath: process.env.EXECUTABLE_PATH || undefined,
-    proxyServer: process.env.PROXY_SERVER || undefined,
-    userDataDir: process.env.USER_DATA_DIR || undefined,
+    apiKey: process.env.API_KEY,
   },
   appConfig: {
     enableMessageRecord:

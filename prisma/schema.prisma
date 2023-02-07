@@ -17,6 +17,12 @@ enum ChatGPTState {
   Down
 }
 
+enum APIKeyStatus {
+  Active
+  Overload
+  Error
+}
+
 model ChatGPTAccount {
   id               String       @id @default(cuid())
   createdAt        DateTime     @default(now())
@@ -29,6 +35,16 @@ model ChatGPTAccount {
 
   @@unique([email])
   @@map("chatgpt_account")
+}
+
+model ChatGPTAPIKey {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  apiKey    String       @map("api_key")
+  status    APIKeyStatus @default(Active)
+
+  @@map("chatgpt_api_key")
 }
 
 model ChatGPTConversation {
@@ -54,4 +70,13 @@ model ChatGPTMessageResult {
   messageId      String   @map("message_id")
   message        String
   response       String
+
+  @@map("chatgpt_message_result")
+}
+
+model ChatGPTConversationCache {
+  key   String @id
+  value String
+
+  @@map("chatgpt_conversation_cache")
 }
