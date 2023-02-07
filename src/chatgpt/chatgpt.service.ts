@@ -28,14 +28,9 @@ export class ChatgptService {
   }
   async getAPIKey() {
     const apiKeys = (
-      await this.prismaService.chatGPTAccount.findMany({
+      await this.prismaService.chatGPTAPIKey.findMany({
         where: {
-          status: {
-            notIn: ['Overload'],
-          },
-          apiKey: {
-            not: null,
-          },
+          status: 'Active',
         },
         select: {
           apiKey: true,

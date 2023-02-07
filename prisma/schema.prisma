@@ -17,19 +17,34 @@ enum ChatGPTState {
   Down
 }
 
+enum APIKeyStatus {
+  Active
+  Overload
+  Error
+}
+
 model ChatGPTAccount {
   id               String       @id @default(cuid())
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   email            String
   password         String
-  apiKey           String?      @map("api_key")
   isGoogleLogin    Boolean      @default(false)
   isMicrosoftLogin Boolean      @default(false)
   status           ChatGPTState @default(Down)
 
   @@unique([email])
   @@map("chatgpt_account")
+}
+
+model ChatGPTAPIKey {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  apiKey    String       @map("api_key")
+  status    APIKeyStatus @default(Active)
+
+  @@map("chatgpt_api_key")
 }
 
 model ChatGPTConversation {
