@@ -152,4 +152,3 @@ dist
 # End of https://www.toptal.com/developers/gitignore/api/node
 n
 account.json
-apikey.json

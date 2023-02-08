@@ -22,7 +22,12 @@ export interface SwaggerConfig {
   path: string;
 }
 export interface ChatgptConfig {
-  apiKey: string;
+  minimize?: boolean;
+  captchaToken?: string;
+  nopechaKey?: string;
+  executablePath?: string;
+  proxyServer?: string;
+  userDataDir?: string;
 }
 
 export interface AppConfig {
