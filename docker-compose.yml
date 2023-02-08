@@ -12,7 +12,7 @@ services:
     depends_on:
       - postgres
     environment:
-      - DABATASE_URL=postgres://postgres:postgres@postgres:5432/chatgpt
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/chatgpt
     env_file:
       - .env
 
