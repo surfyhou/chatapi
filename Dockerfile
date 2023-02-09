@@ -29,4 +29,4 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
-CMD xvfb-run --server-args="-screen 0 1280x800x24 -ac -nolisten tcp -dpi 96 +extension RANDR" npm run start:prod
+CMD xvfb-run --server-args="-screen 0 1280x800x24 -ac -nolisten tcp -dpi 96 +extension RANDR -maxclients 4096" npm run start:prod
