@@ -301,7 +301,7 @@ export class ChatgptService {
       select: {
         email: true,
       },
-      take: 1,
+      take: 2,
     });
     this.logger.debug(`Found ${accounts.length} down accounts`);
     for (const account of accounts) {
